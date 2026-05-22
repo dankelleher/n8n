@@ -8,4 +8,19 @@ export class InstanceAiCheckpointRepository extends Repository<InstanceAiCheckpo
 	constructor(dataSource: DataSource) {
 		super(InstanceAiCheckpoint, dataSource.manager);
 	}
+
+	/**
+	 * Live (non-expired) checkpoints for a thread, newest first. Used to
+	 * surface in-flight messages from suspended runs whose `messageList`
+	 * hasn't been committed back to `instance_ai_messages` yet — the SDK
+	 * only saves the turn delta to memory at the end of a successful loop,
+	 * so messages from a turn that suspended at HITL live only in the
+	 * checkpoint blob until the run resumes and completes.
+	 */
+	async findActiveByThreadId(threadId: string): Promise<InstanceAiCheckpoint[]> {
+		return await this.find({
+			where: { threadId, expired: false },
+			order: { createdAt: 'DESC' },
+		});
+	}
 }
